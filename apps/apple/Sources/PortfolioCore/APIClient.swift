@@ -27,6 +27,14 @@ public struct PortfolioAPIClient: Sendable {
         )
     }
 
+    public func fetchCurrentSession() async throws -> CurrentSessionPayload {
+        try await send(path: "api/me")
+    }
+
+    public func logout() async throws {
+        _ = try await sendWithoutResponse(path: "api/auth/logout", method: "POST")
+    }
+
     public func fetchSummary(portfolioID: Int? = nil) async throws -> PortfolioSummary {
         try await send(path: "api/performance/summary", queryItems: portfolioID.map { [URLQueryItem(name: "portfolio_id", value: String($0))] } ?? [])
     }
@@ -86,6 +94,15 @@ public struct PortfolioAPIClient: Sendable {
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(Response.self, from: data)
     }
+
+    private func sendWithoutResponse(
+        path: String,
+        method: String = "POST",
+        queryItems: [URLQueryItem] = [],
+        body: [String: String]? = nil
+    ) async throws -> VoidResponse {
+        try await send(path: path, method: method, queryItems: queryItems, body: body)
+    }
 }
 
 public enum APIError: LocalizedError {
@@ -104,3 +121,5 @@ public enum APIError: LocalizedError {
         }
     }
 }
+
+private struct VoidResponse: Decodable {}

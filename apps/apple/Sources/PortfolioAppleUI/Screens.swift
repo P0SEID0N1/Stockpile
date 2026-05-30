@@ -11,24 +11,34 @@ public struct PortfolioDesktopRootView: View {
     }
 
     public var body: some View {
-        NavigationSplitView {
-            List(PortfolioAppModel.Section.allCases, selection: $model.selectedSection) { section in
-                Label(section.title, systemImage: section.symbolName)
-                    .tag(section)
-            }
-            .navigationTitle("Stockpile")
-            .listStyle(.sidebar)
-        } detail: {
-            detailView
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            Task { await model.refresh() }
-                        } label: {
-                            Label("Refresh", systemImage: "arrow.clockwise")
-                        }
+        Group {
+            if model.isAuthenticated {
+                NavigationSplitView {
+                    List(PortfolioAppModel.Section.allCases, selection: $model.selectedSection) { section in
+                        Label(section.title, systemImage: section.symbolName)
+                            .tag(section)
                     }
+                    .navigationTitle("Stockpile")
+                    .listStyle(.sidebar)
+                } detail: {
+                    detailView
+                        .toolbar {
+                            ToolbarItem(placement: .primaryAction) {
+                                Button {
+                                    Task { await model.refresh() }
+                                } label: {
+                                    Label("Refresh", systemImage: "arrow.clockwise")
+                                }
+                            }
+                        }
                 }
+            } else {
+                AuthenticationScreen(model: model)
+                    .frame(minWidth: 520, minHeight: 560)
+            }
+        }
+        .task {
+            await model.bootstrap()
         }
     }
 
@@ -58,27 +68,111 @@ public struct PortfolioMobileRootView: View {
     }
 
     public var body: some View {
-        TabView(selection: $model.selectedSection) {
-            NavigationStack { DashboardScreen(model: model) }
-                .tabItem { Label("Dashboard", systemImage: "chart.line.uptrend.xyaxis") }
-                .tag(PortfolioAppModel.Section.dashboard)
+        Group {
+            if model.isAuthenticated {
+                TabView(selection: $model.selectedSection) {
+                    NavigationStack { DashboardScreen(model: model) }
+                        .tabItem { Label("Dashboard", systemImage: "chart.line.uptrend.xyaxis") }
+                        .tag(PortfolioAppModel.Section.dashboard)
 
-            NavigationStack { HoldingsScreen(model: model) }
-                .tabItem { Label("Portfolio", systemImage: "briefcase") }
-                .tag(PortfolioAppModel.Section.portfolio)
+                    NavigationStack { HoldingsScreen(model: model) }
+                        .tabItem { Label("Portfolio", systemImage: "briefcase") }
+                        .tag(PortfolioAppModel.Section.portfolio)
 
-            NavigationStack { JournalScreen(model: model) }
-                .tabItem { Label("Journal", systemImage: "book.closed") }
-                .tag(PortfolioAppModel.Section.journal)
+                    NavigationStack { JournalScreen(model: model) }
+                        .tabItem { Label("Journal", systemImage: "book.closed") }
+                        .tag(PortfolioAppModel.Section.journal)
 
-            NavigationStack { PlanScreen(model: model) }
-                .tabItem { Label("Plan", systemImage: "scope") }
-                .tag(PortfolioAppModel.Section.plan)
+                    NavigationStack { PlanScreen(model: model) }
+                        .tabItem { Label("Plan", systemImage: "scope") }
+                        .tag(PortfolioAppModel.Section.plan)
 
-            NavigationStack { SettingsScreen(model: model) }
-                .tabItem { Label("Settings", systemImage: "gearshape") }
-                .tag(PortfolioAppModel.Section.settings)
+                    NavigationStack { SettingsScreen(model: model) }
+                        .tabItem { Label("Settings", systemImage: "gearshape") }
+                        .tag(PortfolioAppModel.Section.settings)
+                }
+            } else {
+                NavigationStack {
+                    AuthenticationScreen(model: model)
+                }
+            }
         }
+        .task {
+            await model.bootstrap()
+        }
+    }
+}
+
+struct AuthenticationScreen: View {
+    @Bindable var model: PortfolioAppModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Stockpile")
+                        .font(.largeTitle.bold())
+                    Text("Sign in to your self-hosted portfolio server.")
+                        .foregroundStyle(.secondary)
+                }
+
+                VStack(alignment: .leading, spacing: 16) {
+                    TextField("Server URL", text: $model.serverURL)
+                        .textFieldStyle(.roundedBorder)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                        #endif
+
+                    TextField("Email", text: $model.email)
+                        .textFieldStyle(.roundedBorder)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.emailAddress)
+                        #endif
+
+                    SecureField("Password", text: $model.password)
+                        .textFieldStyle(.roundedBorder)
+
+                    if let errorMessage = model.errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+
+                    Button {
+                        model.saveServerURL()
+                        Task { await model.signIn() }
+                    } label: {
+                        if model.authenticationState == .signingIn {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Sign In")
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(model.authenticationState == .signingIn || model.serverURL.isEmpty || model.email.isEmpty || model.password.isEmpty)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Requirements")
+                        .font(.headline)
+                    Text("Use your HTTPS production URL, for example `https://stockpile.maxwood.me`.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("The first account must already exist on the server via `/setup`.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(24)
+            .frame(maxWidth: 520, alignment: .leading)
+        }
+        .navigationTitle("Login")
     }
 }
 
@@ -241,22 +335,50 @@ struct PlanScreen: View {
 }
 
 struct SettingsScreen: View {
-    let model: PortfolioAppModel
+    @Bindable var model: PortfolioAppModel
 
     var body: some View {
         Form {
             Section("Server") {
-                Text(model.serverURL)
-                Text("Point this app at your self-hosted Laravel instance.")
+                TextField("Server URL", text: $model.serverURL)
+                    #if !os(macOS)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    #endif
+                Button("Save Server URL") {
+                    model.saveServerURL()
+                }
+                Text("Point this app at your self-hosted Laravel instance root URL.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+            Section("Account") {
+                Text(model.currentUser?.email ?? model.email)
+                if model.portfolios.isEmpty == false {
+                    Picker("Portfolio", selection: Binding(
+                        get: { model.selectedPortfolioID ?? model.portfolios.first?.id ?? 0 },
+                        set: { newValue in
+                            model.selectPortfolio(id: newValue)
+                            Task { await model.refresh() }
+                        }
+                    )) {
+                        ForEach(model.portfolios) { portfolio in
+                            Text(portfolio.name).tag(portfolio.id)
+                        }
+                    }
+                }
+
+                Button("Sign Out", role: .destructive) {
+                    Task { await model.signOut() }
+                }
             }
             Section("Status") {
                 if let errorMessage = model.errorMessage {
                     Text(errorMessage)
                         .foregroundStyle(.red)
                 } else {
-                    Text("Ready to sync")
+                    Text(model.isRefreshing ? "Refreshing..." : "Ready to sync")
                 }
             }
         }

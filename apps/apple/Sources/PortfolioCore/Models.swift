@@ -174,6 +174,11 @@ public struct SessionPayload: Codable, Equatable, Sendable {
     }
 }
 
+public struct CurrentSessionPayload: Codable, Equatable, Sendable {
+    public let user: SessionUser
+    public let portfolios: [PortfolioDescriptor]
+}
+
 public struct SessionUser: Codable, Equatable, Sendable {
     public let id: Int
     public let name: String
