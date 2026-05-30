@@ -26,7 +26,12 @@ Route::middleware('auth.api')->group(function () {
     Route::get('/performance/timeseries', [PerformanceController::class, 'timeseries']);
     Route::get('/benchmarks', [BenchmarkController::class, 'index']);
     Route::post('/benchmarks/select', [BenchmarkController::class, 'select']);
-    Route::apiResource('journal', JournalController::class)->only(['index', 'store']);
+    Route::apiResource('journal', JournalController::class)
+    ->only(['index', 'store'])
+    ->names([
+        'index' => 'api.journal.index',
+        'store' => 'api.journal.store',
+    ]);
     Route::get('/plans/targets', [AllocationTargetController::class, 'index']);
     Route::put('/plans/targets', [AllocationTargetController::class, 'update']);
     Route::post('/imports/holdings-csv', [ImportController::class, 'store']);
