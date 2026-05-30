@@ -2,6 +2,7 @@ import Charts
 import SwiftUI
 import PortfolioCore
 
+#if os(macOS)
 public struct PortfolioDesktopRootView: View {
     @Bindable private var model: PortfolioAppModel
 
@@ -47,6 +48,7 @@ public struct PortfolioDesktopRootView: View {
         }
     }
 }
+#endif
 
 public struct PortfolioMobileRootView: View {
     @Bindable private var model: PortfolioAppModel
