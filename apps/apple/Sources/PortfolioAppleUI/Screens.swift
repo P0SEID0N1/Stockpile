@@ -49,10 +49,10 @@ public struct PortfolioDesktopRootView: View {
             DashboardScreen(model: model)
         case .portfolio:
             HoldingsScreen(model: model)
+        case .performance:
+            PerformanceScreen(model: model)
         case .journal:
             JournalScreen(model: model)
-        case .plan:
-            PlanScreen(model: model)
         case .settings:
             SettingsScreen(model: model)
         }
@@ -79,13 +79,13 @@ public struct PortfolioMobileRootView: View {
                         .tabItem { Label("Portfolio", systemImage: "briefcase") }
                         .tag(PortfolioAppModel.Section.portfolio)
 
+                    NavigationStack { PerformanceScreen(model: model) }
+                        .tabItem { Label("Performance", systemImage: "globe.americas") }
+                        .tag(PortfolioAppModel.Section.performance)
+
                     NavigationStack { JournalScreen(model: model) }
                         .tabItem { Label("Journal", systemImage: "book.closed") }
                         .tag(PortfolioAppModel.Section.journal)
-
-                    NavigationStack { PlanScreen(model: model) }
-                        .tabItem { Label("Plan", systemImage: "scope") }
-                        .tag(PortfolioAppModel.Section.plan)
 
                     NavigationStack { SettingsScreen(model: model) }
                         .tabItem { Label("Settings", systemImage: "gearshape") }
@@ -196,7 +196,7 @@ struct DashboardScreen: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(model.summary.portfolioName)
                 .font(.largeTitle.bold())
-            Text("Benchmark: \(model.summary.benchmarkSymbol)")
+            Text("Benchmark: \(model.summary.benchmarkLabel ?? model.summary.benchmarkSymbol)")
                 .foregroundStyle(.secondary)
         }
     }
@@ -212,16 +212,16 @@ struct DashboardScreen: View {
 
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Portfolio Growth")
-                .font(.headline)
+            HStack {
+                Text("Portfolio Value")
+                    .font(.headline)
+                Spacer()
+                RangePicker(model: model)
+            }
             Chart {
                 ForEach(model.performanceSeries.portfolio) { point in
                     LineMark(x: .value("Date", point.date), y: .value("Portfolio", point.value))
                         .foregroundStyle(.blue)
-                }
-                ForEach(model.performanceSeries.benchmark) { point in
-                    LineMark(x: .value("Date", point.date), y: .value("Benchmark", point.value))
-                        .foregroundStyle(.green)
                 }
             }
             .frame(height: 240)
@@ -299,8 +299,10 @@ struct AddHoldingScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var model: PortfolioAppModel
     @State private var symbol = ""
+    @State private var tradeDate = Date.now
     @State private var purchasePrice = ""
     @State private var quantity = ""
+    @State private var totalCost = ""
     @State private var isSaving = false
 
     var body: some View {
@@ -312,6 +314,7 @@ struct AddHoldingScreen: View {
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
                         #endif
+                    DatePicker("Purchase date", selection: $tradeDate, displayedComponents: .date)
                     TextField("Price paid per share", text: $purchasePrice)
                         #if !os(macOS)
                         .keyboardType(.decimalPad)
@@ -320,10 +323,14 @@ struct AddHoldingScreen: View {
                         #if !os(macOS)
                         .keyboardType(.decimalPad)
                         #endif
+                    TextField("Total cost", text: $totalCost)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
                 }
 
                 Section("Quote source") {
-                    Text("Live quotes come from the configured backend market-data provider, not directly from `GOOGLEFINANCE()`.")
+                    Text("The portfolio history is rebuilt from dated transactions plus the backend market-data provider, including automatic DRIP where dividend history is available.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -349,7 +356,7 @@ struct AddHoldingScreen: View {
                             await save()
                         }
                     }
-                    .disabled(isSaving || symbol.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || purchasePrice.isEmpty || quantity.isEmpty)
+                    .disabled(isSaving || symbol.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || purchasePrice.isEmpty || quantity.isEmpty || totalCost.isEmpty)
                 }
             }
         }
@@ -357,8 +364,9 @@ struct AddHoldingScreen: View {
 
     private func save() async {
         guard let parsedPurchasePrice = Double(purchasePrice),
-              let parsedQuantity = Double(quantity) else {
-            model.addHoldingErrorMessage = "Enter valid numeric values for price and shares."
+              let parsedQuantity = Double(quantity),
+              let parsedTotalCost = Double(totalCost) else {
+            model.addHoldingErrorMessage = "Enter valid numeric values for price, shares, and total cost."
             return
         }
 
@@ -367,8 +375,10 @@ struct AddHoldingScreen: View {
 
         let success = await model.addHolding(
             symbol: symbol,
+            tradeDate: isoDate(tradeDate),
             purchasePrice: parsedPurchasePrice,
-            quantity: parsedQuantity
+            quantity: parsedQuantity,
+            totalCost: parsedTotalCost
         )
 
         if success {
@@ -384,14 +394,30 @@ struct JournalScreen: View {
         List(model.journalEntries) { entry in
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(entry.entryType.capitalized)
+                    Text(entry.entryType.replacingOccurrences(of: "_", with: " ").capitalized)
                         .font(.headline)
                     Spacer()
                     Text(entry.tradeDate)
                         .foregroundStyle(.secondary)
                 }
-                Text(entry.holding?.asset.symbol ?? entry.account?.name ?? "General note")
+                Text(entry.asset?.symbol ?? entry.holding?.asset.symbol ?? entry.account?.name ?? "General note")
                     .font(.subheadline)
+                HStack {
+                    if let quantity = entry.quantity {
+                        Text("Qty \(quantity)")
+                    }
+                    if let price = entry.pricePerUnit {
+                        Text("Price \(currency(Double(price) ?? 0))")
+                    }
+                    if let amount = entry.amount {
+                        Text("Cash \(currency(Double(amount) ?? 0))")
+                    }
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                Text(entry.sourceType.replacingOccurrences(of: "_", with: " ").capitalized)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
                 if let notes = entry.notes {
                     Text(notes)
                         .font(.footnote)
@@ -403,34 +429,53 @@ struct JournalScreen: View {
     }
 }
 
-struct PlanScreen: View {
+struct PerformanceScreen: View {
     let model: PortfolioAppModel
 
     var body: some View {
-        List(model.planner.targets) { target in
-            VStack(alignment: .leading, spacing: 8) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    Text(target.label.capitalized)
-                        .font(.headline)
+                    Text("Performance vs US Market")
+                        .font(.title2.bold())
                     Spacer()
-                    Text("\(target.targetPercentage.formatted(.number.precision(.fractionLength(1))))% target")
-                        .foregroundStyle(.secondary)
+                    RangePicker(model: model)
                 }
-                HStack {
-                    Text("Current \(target.currentPercentage.formatted(.number.precision(.fractionLength(1))))%")
-                    Spacer()
-                    Text(currency(target.deltaValue))
-                        .foregroundStyle(target.deltaValue >= 0 ? .green : .red)
+                Chart {
+                    ForEach(model.performanceSeries.comparisonPortfolio) { point in
+                        LineMark(x: .value("Date", point.date), y: .value("Portfolio", point.value))
+                            .foregroundStyle(.blue)
+                    }
+                    ForEach(model.performanceSeries.benchmark) { point in
+                        LineMark(x: .value("Date", point.date), y: .value("Benchmark", point.value))
+                            .foregroundStyle(.green)
+                    }
                 }
-                .font(.footnote)
+                .frame(height: 260)
+                summaryCard
             }
+            .padding()
         }
-        .navigationTitle("Plan")
+        .navigationTitle("Performance")
+    }
+
+    private var summaryCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(model.performanceSeries.benchmarkLabel)
+                .font(.headline)
+            HStack {
+                MetricCard(title: "Portfolio Return", value: "\(model.performanceSeries.portfolioReturnPercent.formatted(.number.precision(.fractionLength(2))))%", tint: model.performanceSeries.portfolioReturnPercent >= 0 ? .green : .red)
+                MetricCard(title: "Benchmark Return", value: "\(model.performanceSeries.benchmarkReturnPercent.formatted(.number.precision(.fractionLength(2))))%", tint: model.performanceSeries.benchmarkReturnPercent >= 0 ? .green : .red)
+            }
+            MetricCard(title: "Outperformance", value: "\((model.performanceSeries.portfolioReturnPercent - model.performanceSeries.benchmarkReturnPercent).formatted(.number.precision(.fractionLength(2))))%", tint: (model.performanceSeries.portfolioReturnPercent - model.performanceSeries.benchmarkReturnPercent) >= 0 ? .green : .red)
+        }
+        .cardStyle()
     }
 }
 
 struct SettingsScreen: View {
     @Bindable var model: PortfolioAppModel
+    @State private var isConfirmingReset = false
 
     var body: some View {
         Form {
@@ -468,6 +513,14 @@ struct SettingsScreen: View {
                     Task { await model.signOut() }
                 }
             }
+            Section("Danger Zone") {
+                Button("Wipe Portfolio and Start Over", role: .destructive) {
+                    isConfirmingReset = true
+                }
+                Text("Deletes holdings, transactions, snapshots, and imports for the selected portfolio, then recreates a fresh empty replacement.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Section("Status") {
                 if let errorMessage = model.errorMessage {
                     Text(errorMessage)
@@ -478,6 +531,33 @@ struct SettingsScreen: View {
             }
         }
         .navigationTitle("Settings")
+        .alert("Wipe Portfolio?", isPresented: $isConfirmingReset) {
+            Button("Cancel", role: .cancel) { }
+            Button("Wipe", role: .destructive) {
+                Task { _ = await model.resetPortfolio() }
+            }
+        } message: {
+            Text("This permanently deletes the current portfolio data and creates a fresh empty replacement.")
+        }
+    }
+}
+
+struct RangePicker: View {
+    @Bindable var model: PortfolioAppModel
+
+    private let ranges = ["1d", "5d", "1m", "3m", "1y", "ytd"]
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(ranges, id: \.self) { range in
+                Button(range.uppercased()) {
+                    Task { await model.selectPerformanceRange(range) }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(model.selectedPerformanceRange == range ? .accentColor : .gray.opacity(0.35))
+                .controlSize(.small)
+            }
+        }
     }
 }
 
@@ -510,4 +590,12 @@ private extension View {
 
 private func currency(_ value: Double) -> String {
     value.formatted(.currency(code: "USD"))
+}
+
+private func isoDate(_ date: Date) -> String {
+    let formatter = DateFormatter()
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter.string(from: date)
 }

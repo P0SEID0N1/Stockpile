@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ?? 'Stockpile' }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 </head>
@@ -12,7 +13,10 @@
 
     <nav class="navbar navbar-expand-lg border-bottom bg-white sticky-top">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-semibold" href="{{ route('dashboard') }}">Stockpile</a>
+            <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
+                <img src="{{ asset('brand/stockpile-mark.svg') }}" alt="" width="28" height="28">
+                <span>Stockpile</span>
+            </a>
             @auth
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#stockpileNav">
                     <span class="navbar-toggler-icon"></span>

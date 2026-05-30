@@ -8,8 +8,8 @@ public final class PortfolioAppModel {
     public enum Section: String, CaseIterable, Identifiable {
         case dashboard
         case portfolio
+        case performance
         case journal
-        case plan
         case settings
 
         public var id: String { rawValue }
@@ -18,8 +18,8 @@ public final class PortfolioAppModel {
             switch self {
             case .dashboard: "Dashboard"
             case .portfolio: "Portfolio"
+            case .performance: "Performance"
             case .journal: "Journal"
-            case .plan: "Plan"
             case .settings: "Settings"
             }
         }
@@ -28,8 +28,8 @@ public final class PortfolioAppModel {
             switch self {
             case .dashboard: "chart.line.uptrend.xyaxis"
             case .portfolio: "briefcase"
+            case .performance: "globe.americas"
             case .journal: "book.closed"
-            case .plan: "scope"
             case .settings: "gearshape"
             }
         }
@@ -46,7 +46,7 @@ public final class PortfolioAppModel {
     public var holdings: [HoldingRow] = MockPortfolioData.holdings.data
     public var performanceSeries: PerformanceSeries = MockPortfolioData.series
     public var journalEntries: [JournalEntryDTO] = MockPortfolioData.journal
-    public var planner: PlannerResponse = MockPortfolioData.planner
+    public var selectedPerformanceRange = "1m"
 
     public var serverURL: String
     public var email: String
@@ -153,15 +153,16 @@ public final class PortfolioAppModel {
         do {
             async let summaryRequest = apiClient().fetchSummary(portfolioID: selectedPortfolioID)
             async let holdingsRequest = apiClient().fetchHoldings(portfolioID: selectedPortfolioID)
-            async let seriesRequest = apiClient().fetchPerformanceSeries(portfolioID: selectedPortfolioID)
+            async let seriesRequest = apiClient().fetchPerformanceSeries(
+                portfolioID: selectedPortfolioID,
+                range: selectedPerformanceRange
+            )
             async let journalRequest = apiClient().fetchJournal(portfolioID: selectedPortfolioID)
-            async let plannerRequest = apiClient().fetchPlanner(portfolioID: selectedPortfolioID)
 
             summary = try await summaryRequest
             holdings = try await holdingsRequest.data
             performanceSeries = try await seriesRequest
             journalEntries = try await journalRequest
-            planner = try await plannerRequest
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
@@ -177,7 +178,18 @@ public final class PortfolioAppModel {
         userDefaults.set(id, forKey: StorageKey.selectedPortfolioID)
     }
 
-    public func addHolding(symbol: String, purchasePrice: Double, quantity: Double) async -> Bool {
+    public func selectPerformanceRange(_ range: String) async {
+        selectedPerformanceRange = range
+        await refresh()
+    }
+
+    public func addHolding(
+        symbol: String,
+        tradeDate: String,
+        purchasePrice: Double,
+        quantity: Double,
+        totalCost: Double
+    ) async -> Bool {
         guard isAuthenticated else {
             addHoldingErrorMessage = "Sign in before adding holdings."
             return false
@@ -188,8 +200,8 @@ public final class PortfolioAppModel {
             return false
         }
 
-        guard purchasePrice > 0, quantity > 0 else {
-            addHoldingErrorMessage = "Purchase price and shares must be greater than zero."
+        guard purchasePrice > 0, quantity > 0, totalCost > 0 else {
+            addHoldingErrorMessage = "Purchase date, price, shares, and total cost are required."
             return false
         }
 
@@ -197,14 +209,37 @@ public final class PortfolioAppModel {
             _ = try await apiClient().createHolding(
                 portfolioID: selectedPortfolioID,
                 symbol: symbol,
+                tradeDate: tradeDate,
                 purchasePrice: purchasePrice,
-                quantity: quantity
+                quantity: quantity,
+                totalCost: totalCost
             )
             addHoldingErrorMessage = nil
             await refresh()
             return true
         } catch {
             addHoldingErrorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    public func resetPortfolio() async -> Bool {
+        guard isAuthenticated, let selectedPortfolioID else {
+            errorMessage = "Sign in before resetting the portfolio."
+            return false
+        }
+
+        do {
+            let response = try await apiClient().resetPortfolio(id: selectedPortfolioID)
+            let session = try await apiClient().fetchCurrentSession()
+            currentUser = session.user
+            portfolios = session.portfolios
+            self.selectedPortfolioID = response.portfolio.id
+            persistSession()
+            await refresh()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
             return false
         }
     }
@@ -267,7 +302,6 @@ public final class PortfolioAppModel {
         holdings = MockPortfolioData.holdings.data
         performanceSeries = MockPortfolioData.series
         journalEntries = MockPortfolioData.journal
-        planner = MockPortfolioData.planner
     }
 
     private var deviceName: String {

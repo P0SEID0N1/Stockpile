@@ -32,7 +32,20 @@
                     <dd class="col-7">{{ $portfolio->benchmark_symbol }} · {{ $portfolio->benchmark_name }}</dd>
                 </dl>
                 <div class="alert alert-secondary mt-4 mb-0">
-                    Update benchmark selection through the API endpoint <code>POST /api/benchmarks/select</code>.
+                    The performance view compares this portfolio against a Wilshire 5000-style benchmark, using a broad US market proxy when the exact index feed is unavailable.
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card shadow-sm border-danger">
+            <div class="card-body">
+                <h2 class="h5 mb-2 text-danger">Danger zone</h2>
+                <p class="text-secondary mb-3">Wipe this portfolio, delete all holdings, transactions, snapshots, and imports, then recreate a fresh empty portfolio with the same defaults.</p>
+                <form method="post" action="{{ route('settings.reset') }}" onsubmit="return confirm('This will permanently wipe the portfolio and create a fresh replacement. Continue?');">
+                    @csrf
+                    <button type="submit" class="btn btn-danger">Wipe portfolio and start over</button>
+                </form>
                 </div>
             </div>
         </div>

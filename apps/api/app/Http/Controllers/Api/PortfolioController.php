@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\InteractsWithPortfolio;
+use App\Services\PortfolioLedgerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PortfolioController extends Controller
 {
+    use InteractsWithPortfolio;
+
     public function index(Request $request): JsonResponse
     {
         return response()->json(
@@ -32,5 +36,16 @@ class PortfolioController extends Controller
         ]);
 
         return response()->json($portfolio, 201);
+    }
+
+    public function reset(Request $request, string $id, PortfolioLedgerService $portfolioLedgerService): JsonResponse
+    {
+        $portfolio = $request->user()->portfolios()->whereKey($id)->firstOrFail();
+        $replacement = $portfolioLedgerService->resetPortfolio($portfolio);
+
+        return response()->json([
+            'message' => 'Portfolio reset successfully.',
+            'portfolio' => $replacement,
+        ]);
     }
 }

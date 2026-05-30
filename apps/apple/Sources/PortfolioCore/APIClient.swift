@@ -43,8 +43,13 @@ public struct PortfolioAPIClient: Sendable {
         try await send(path: "api/holdings", queryItems: portfolioID.map { [URLQueryItem(name: "portfolio_id", value: String($0))] } ?? [])
     }
 
-    public func fetchPerformanceSeries(portfolioID: Int? = nil) async throws -> PerformanceSeries {
-        try await send(path: "api/performance/timeseries", queryItems: portfolioID.map { [URLQueryItem(name: "portfolio_id", value: String($0))] } ?? [])
+    public func fetchPerformanceSeries(portfolioID: Int? = nil, range: String = "1m") async throws -> PerformanceSeries {
+        var queryItems = [URLQueryItem(name: "range", value: range)]
+        if let portfolioID {
+            queryItems.append(URLQueryItem(name: "portfolio_id", value: String(portfolioID)))
+        }
+
+        return try await send(path: "api/performance/timeseries", queryItems: queryItems)
     }
 
     public func fetchJournal(portfolioID: Int? = nil) async throws -> [JournalEntryDTO] {
@@ -58,15 +63,19 @@ public struct PortfolioAPIClient: Sendable {
     public func createHolding(
         portfolioID: Int?,
         symbol: String,
+        tradeDate: String,
         purchasePrice: Double,
-        quantity: Double
+        quantity: Double,
+        totalCost: Double
     ) async throws -> HoldingRow {
         var body: [String: String] = [
             "symbol": symbol.uppercased(),
             "name": symbol.uppercased(),
             "asset_type": "stocks",
+            "trade_date": tradeDate,
             "quantity": String(quantity),
             "purchase_price": String(purchasePrice),
+            "total_cost": String(totalCost),
         ]
 
         if let portfolioID {
@@ -77,6 +86,13 @@ public struct PortfolioAPIClient: Sendable {
             path: "api/holdings",
             method: "POST",
             body: body
+        )
+    }
+
+    public func resetPortfolio(id: Int) async throws -> ResetPortfolioResponse {
+        try await send(
+            path: "api/portfolios/\(id)/reset",
+            method: "POST"
         )
     }
 

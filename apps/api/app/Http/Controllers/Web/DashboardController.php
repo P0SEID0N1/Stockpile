@@ -20,11 +20,13 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $portfolio = $this->resolvePortfolio($request);
+        $range = (string) $request->query('range', '1m');
 
         return view('dashboard.index', [
             'portfolio' => $portfolio,
             'summary' => $this->portfolioAnalyticsService->summary($portfolio),
-            'series' => $this->portfolioAnalyticsService->timeSeries($portfolio),
+            'series' => $this->portfolioAnalyticsService->timeSeries($portfolio, $range),
+            'selectedRange' => $range,
             'recentHoldings' => Holding::query()
                 ->with(['account', 'asset'])
                 ->whereHas('account', fn ($query) => $query->where('portfolio_id', $portfolio->id))
@@ -41,17 +43,20 @@ class DashboardController extends Controller
         return view('portfolio.index', [
             'portfolio' => $portfolio,
             'accounts' => $portfolio->accounts()->with('holdings.asset')->get(),
+            'defaultTradeDate' => today()->toDateString(),
         ]);
     }
 
     public function performance(Request $request)
     {
         $portfolio = $this->resolvePortfolio($request);
+        $range = (string) $request->query('range', '1m');
 
         return view('performance.index', [
             'portfolio' => $portfolio,
             'summary' => $this->portfolioAnalyticsService->summary($portfolio),
-            'series' => $this->portfolioAnalyticsService->timeSeries($portfolio),
+            'series' => $this->portfolioAnalyticsService->timeSeries($portfolio, $range),
+            'selectedRange' => $range,
         ]);
     }
 
@@ -61,7 +66,11 @@ class DashboardController extends Controller
 
         return view('journal.index', [
             'portfolio' => $portfolio,
-            'entries' => $portfolio->journalEntries()->with(['account', 'holding.asset'])->latest('trade_date')->get(),
+            'entries' => $portfolio->journalEntries()
+                ->with(['account', 'asset', 'holding.asset', 'linkedEntry'])
+                ->orderByDesc('trade_date')
+                ->orderByDesc('id')
+                ->get(),
         ]);
     }
 

@@ -40,6 +40,50 @@ class TiingoMarketDataProvider implements MarketDataProvider
         return $quotes;
     }
 
+    public function fetchDailyHistory(string $symbol, string $startDate, ?string $endDate = null): array
+    {
+        if ($this->apiToken === '') {
+            return [];
+        }
+
+        $response = $this->request()->get("/tiingo/daily/{$symbol}/prices", [
+            'startDate' => $startDate,
+            'endDate' => $endDate ?? today()->toDateString(),
+            'resampleFreq' => 'daily',
+        ]);
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload)) {
+            return [];
+        }
+
+        return collect($payload)
+            ->filter(fn ($row) => is_array($row) && isset($row['date']) && isset($row['close']))
+            ->map(function (array $row) use ($symbol) {
+                $date = Carbon::parse((string) $row['date']);
+
+                return [
+                    'symbol' => strtoupper((string) ($row['ticker'] ?? $symbol)),
+                    'date' => $date->toDateString(),
+                    'open_price' => isset($row['open']) && is_numeric($row['open']) ? round((float) $row['open'], 6) : null,
+                    'high_price' => isset($row['high']) && is_numeric($row['high']) ? round((float) $row['high'], 6) : null,
+                    'low_price' => isset($row['low']) && is_numeric($row['low']) ? round((float) $row['low'], 6) : null,
+                    'close_price' => round((float) $row['close'], 6),
+                    'adj_close_price' => isset($row['adjClose']) && is_numeric($row['adjClose']) ? round((float) $row['adjClose'], 6) : null,
+                    'dividend_cash' => isset($row['divCash']) && is_numeric($row['divCash']) ? round((float) $row['divCash'], 6) : 0.0,
+                    'split_factor' => isset($row['splitFactor']) && is_numeric($row['splitFactor']) ? round((float) $row['splitFactor'], 6) : 1.0,
+                    'source' => 'tiingo',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
     /**
      * @param  array<int, string>  $symbols
      * @return array<string, array<string, mixed>>

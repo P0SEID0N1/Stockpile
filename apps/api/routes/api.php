@@ -20,6 +20,7 @@ Route::middleware('auth.api')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 
     Route::apiResource('portfolios', PortfolioController::class)->only(['index', 'store']);
+    Route::post('/portfolios/{id}/reset', [PortfolioController::class, 'reset']);
     Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update']);
     Route::apiResource('holdings', HoldingController::class)->only(['index', 'store', 'update']);
     Route::get('/performance/summary', [PerformanceController::class, 'summary']);

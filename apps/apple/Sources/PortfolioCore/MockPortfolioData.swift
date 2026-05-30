@@ -4,7 +4,8 @@ public enum MockPortfolioData {
     public static let summary = PortfolioSummary(
         portfolioID: 1,
         portfolioName: "Main Portfolio",
-        benchmarkSymbol: "SPY",
+        benchmarkSymbol: "W5000",
+        benchmarkLabel: "Wilshire 5000",
         currentValue: 128_450.23,
         costBasisTotal: 113_018.55,
         totalGainLoss: 15_431.68,
@@ -36,6 +37,7 @@ public enum MockPortfolioData {
     )
 
     public static let series = PerformanceSeries(
+        range: "1m",
         portfolio: [
             PortfolioPoint(date: "2026-05-01", value: 121_400),
             PortfolioPoint(date: "2026-05-08", value: 122_950),
@@ -43,18 +45,30 @@ public enum MockPortfolioData {
             PortfolioPoint(date: "2026-05-22", value: 126_110),
             PortfolioPoint(date: "2026-05-29", value: 128_450.23),
         ],
+        comparisonPortfolio: [
+            PortfolioPoint(date: "2026-05-01", value: 100),
+            PortfolioPoint(date: "2026-05-08", value: 101.28),
+            PortfolioPoint(date: "2026-05-15", value: 102.87),
+            PortfolioPoint(date: "2026-05-22", value: 103.88),
+            PortfolioPoint(date: "2026-05-29", value: 105.81),
+        ],
         benchmark: [
             PortfolioPoint(date: "2026-05-01", value: 100),
             PortfolioPoint(date: "2026-05-08", value: 101.8),
             PortfolioPoint(date: "2026-05-15", value: 102.6),
             PortfolioPoint(date: "2026-05-22", value: 103.1),
             PortfolioPoint(date: "2026-05-29", value: 104.4),
-        ]
+        ],
+        portfolioReturnPercent: 5.81,
+        benchmarkReturnPercent: 4.40,
+        benchmarkSymbol: "W5000",
+        benchmarkLabel: "Wilshire 5000"
     )
 
     public static let journal: [JournalEntryDTO] = [
-        JournalEntryDTO(id: 1, entryType: "buy", tradeDate: "2026-05-15", amount: "3200.00", notes: "Added to VTI after monthly contribution.", account: AccountSummary(id: 1, name: "Brokerage", type: "taxable", currency: "USD"), holding: JournalHolding(id: 2, asset: AssetSummary(id: 2, symbol: "VTI", name: "Vanguard Total Stock Market ETF", assetType: "etf"))),
-        JournalEntryDTO(id: 2, entryType: "dividend", tradeDate: "2026-05-18", amount: "44.22", notes: "Quarterly dividend auto-swept to cash.", account: AccountSummary(id: 2, name: "Roth IRA", type: "retirement", currency: "USD"), holding: nil),
+        JournalEntryDTO(id: 1, entryType: "buy", tradeDate: "2026-05-15", quantity: "12.000000", pricePerUnit: "266.666667", amount: "3200.00", sourceType: "manual", notes: "Added to VTI after monthly contribution.", account: AccountSummary(id: 1, name: "Brokerage", type: "taxable", currency: "USD"), asset: AssetSummary(id: 2, symbol: "VTI", name: "Vanguard Total Stock Market ETF", assetType: "etf"), holding: JournalHolding(id: 2, asset: AssetSummary(id: 2, symbol: "VTI", name: "Vanguard Total Stock Market ETF", assetType: "etf"))),
+        JournalEntryDTO(id: 2, entryType: "dividend", tradeDate: "2026-05-18", quantity: nil, pricePerUnit: nil, amount: "44.22", sourceType: "auto_dividend", notes: "Quarterly dividend recorded automatically.", account: AccountSummary(id: 2, name: "Roth IRA", type: "retirement", currency: "USD"), asset: AssetSummary(id: 3, symbol: "BND", name: "Vanguard Total Bond Market ETF", assetType: "bonds"), holding: nil),
+        JournalEntryDTO(id: 3, entryType: "dividend_reinvested", tradeDate: "2026-05-18", quantity: "0.580000", pricePerUnit: "76.241379", amount: "44.22", sourceType: "auto_dividend", notes: "Dividend automatically reinvested.", account: AccountSummary(id: 2, name: "Roth IRA", type: "retirement", currency: "USD"), asset: AssetSummary(id: 3, symbol: "BND", name: "Vanguard Total Bond Market ETF", assetType: "bonds"), holding: nil),
     ]
 
     public static let planner = PlannerResponse(

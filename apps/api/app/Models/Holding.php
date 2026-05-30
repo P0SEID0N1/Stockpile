@@ -46,4 +46,11 @@ class Holding extends Model
     {
         return $this->hasMany(JournalEntry::class);
     }
+
+    public function averageCostPerShare(): float
+    {
+        $quantity = (float) $this->quantity;
+
+        return $quantity > 0 ? round((float) $this->cost_basis_total / $quantity, 6) : 0.0;
+    }
 }

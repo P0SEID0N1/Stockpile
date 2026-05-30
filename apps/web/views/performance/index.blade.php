@@ -3,10 +3,17 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1 class="h3 mb-1">Performance analytics</h1>
-        <p class="text-secondary mb-0">Practical snapshot analytics with benchmark comparison.</p>
+        <h1 class="h3 mb-1">Performance vs US market</h1>
+        <p class="text-secondary mb-0">Compare your indexed portfolio return against a Wilshire 5000-style broad US benchmark.</p>
     </div>
-    <div class="small text-secondary">Benchmark: <strong>{{ $portfolio->benchmark_symbol }}</strong></div>
+    <div class="d-flex align-items-center gap-3">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Range selector">
+            @foreach (['1d', '5d', '1m', '3m', '1y', 'ytd'] as $range)
+                <a href="{{ route('performance.index', ['range' => $range]) }}" class="btn {{ $selectedRange === $range ? 'btn-dark' : 'btn-outline-dark' }}">{{ strtoupper($range) }}</a>
+            @endforeach
+        </div>
+        <div class="small text-secondary">Benchmark: <strong>{{ $series['benchmark_label'] }}</strong></div>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -24,12 +31,12 @@
                 <dl class="row mb-0">
                     <dt class="col-6">Current value</dt>
                     <dd class="col-6 text-end">${{ number_format($summary['current_value'], 2) }}</dd>
-                    <dt class="col-6">Cost basis</dt>
-                    <dd class="col-6 text-end">${{ number_format($summary['cost_basis_total'], 2) }}</dd>
-                    <dt class="col-6">Gain / loss</dt>
-                    <dd class="col-6 text-end {{ $summary['total_gain_loss'] >= 0 ? 'text-success' : 'text-danger' }}">${{ number_format($summary['total_gain_loss'], 2) }}</dd>
-                    <dt class="col-6">Day change</dt>
-                    <dd class="col-6 text-end {{ $summary['day_change'] >= 0 ? 'text-success' : 'text-danger' }}">${{ number_format($summary['day_change'], 2) }}</dd>
+                    <dt class="col-6">Portfolio return</dt>
+                    <dd class="col-6 text-end {{ $series['portfolio_return_percent'] >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($series['portfolio_return_percent'], 2) }}%</dd>
+                    <dt class="col-6">Benchmark return</dt>
+                    <dd class="col-6 text-end {{ $series['benchmark_return_percent'] >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($series['benchmark_return_percent'], 2) }}%</dd>
+                    <dt class="col-6">Outperformance</dt>
+                    <dd class="col-6 text-end {{ ($series['portfolio_return_percent'] - $series['benchmark_return_percent']) >= 0 ? 'text-success' : 'text-danger' }}">{{ number_format($series['portfolio_return_percent'] - $series['benchmark_return_percent'], 2) }}%</dd>
                 </dl>
             </div>
         </div>
@@ -52,7 +59,7 @@
 
 @push('scripts')
 <script>
-const perfSeries = @json($series['portfolio']);
+const perfSeries = @json($series['comparison_portfolio']);
 const perfBenchmark = @json($series['benchmark']);
 new Chart(document.getElementById('performanceChart'), {
     type: 'line',
@@ -60,7 +67,7 @@ new Chart(document.getElementById('performanceChart'), {
         labels: perfSeries.map(point => point.date),
         datasets: [
             {
-                label: 'Portfolio value',
+                label: 'Portfolio (index 100)',
                 data: perfSeries.map(point => point.value),
                 borderColor: '#0dcaf0',
                 backgroundColor: 'rgba(13, 202, 240, 0.15)',
@@ -68,7 +75,7 @@ new Chart(document.getElementById('performanceChart'), {
                 tension: 0.2
             },
             {
-                label: 'Benchmark (index 100)',
+                label: 'US market benchmark',
                 data: perfBenchmark.map(point => point.value),
                 borderColor: '#6f42c1',
                 fill: false,

@@ -31,7 +31,10 @@ class PerformanceController extends Controller
         $portfolio = $this->resolvePortfolio($request);
 
         return response()->json(
-            $this->portfolioAnalyticsService->timeSeries($portfolio)
+            $this->portfolioAnalyticsService->timeSeries(
+                $portfolio,
+                (string) $request->query('range', '1m'),
+            )
         );
     }
 }

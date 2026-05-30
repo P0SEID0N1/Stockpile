@@ -2,11 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\BenchmarkSeries;
+use App\Models\BenchmarkPriceHistory;
 use App\Models\Holding;
 use App\Models\HoldingSnapshot;
 use App\Models\Portfolio;
 use App\Models\PriceQuote;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class PortfolioAnalyticsService
@@ -18,6 +19,7 @@ class PortfolioAnalyticsService
     {
         $holdings = $this->portfolioHoldings($portfolio);
         $quotes = $this->latestQuotesForHoldings($holdings);
+        [$benchmarkSymbol, , $benchmarkLabel] = app(MarketHistoryService::class)->resolveBenchmark($portfolio);
 
         $valueByAccount = [];
         $valueByAssetType = [];
@@ -47,7 +49,8 @@ class PortfolioAnalyticsService
         return [
             'portfolio_id' => $portfolio->id,
             'portfolio_name' => $portfolio->name,
-            'benchmark_symbol' => $portfolio->benchmark_symbol,
+            'benchmark_symbol' => $benchmarkSymbol,
+            'benchmark_label' => $benchmarkLabel,
             'current_value' => round($currentValue, 2),
             'cost_basis_total' => round($costBasis, 2),
             'total_gain_loss' => round($currentValue - $costBasis, 2),
@@ -64,7 +67,7 @@ class PortfolioAnalyticsService
     /**
      * @return array<string, mixed>
      */
-    public function timeSeries(Portfolio $portfolio): array
+    public function timeSeries(Portfolio $portfolio, string $range = '1m'): array
     {
         $points = HoldingSnapshot::query()
             ->selectRaw('holding_snapshots.snapshot_date, SUM(holding_snapshots.market_value) as total_value')
@@ -75,7 +78,7 @@ class PortfolioAnalyticsService
             ->orderBy('holding_snapshots.snapshot_date')
             ->get()
             ->map(fn ($row) => [
-                'date' => $row->snapshot_date,
+                'date' => $row->snapshot_date instanceof Carbon ? $row->snapshot_date->toDateString() : (string) $row->snapshot_date,
                 'value' => round((float) $row->total_value, 2),
             ]);
 
@@ -88,11 +91,21 @@ class PortfolioAnalyticsService
             ]);
         }
 
-        $benchmark = $this->benchmarkSeries($portfolio, $points);
+        $rangedPoints = $this->applyRange($points, $range);
+        $comparisonPortfolio = $this->normalizeSeries($rangedPoints);
+        $benchmark = $this->benchmarkSeries($portfolio, $rangedPoints);
+        $portfolioReturnPercent = $this->rangeReturn($rangedPoints);
+        $benchmarkReturnPercent = $this->rangeReturn(collect($benchmark));
 
         return [
-            'portfolio' => $points->values()->all(),
+            'range' => $range,
+            'portfolio' => $rangedPoints->values()->all(),
+            'comparison_portfolio' => $comparisonPortfolio,
             'benchmark' => $benchmark,
+            'portfolio_return_percent' => $portfolioReturnPercent,
+            'benchmark_return_percent' => $benchmarkReturnPercent,
+            'benchmark_symbol' => $summary['benchmark_symbol'],
+            'benchmark_label' => $summary['benchmark_label'],
         ];
     }
 
@@ -190,22 +203,93 @@ class PortfolioAnalyticsService
             return [];
         }
 
+        [$benchmarkSymbol] = app(MarketHistoryService::class)->resolveBenchmark($portfolio);
         $startDate = $portfolioPoints->first()['date'];
-        $series = BenchmarkSeries::query()
-            ->where('symbol', $portfolio->benchmark_symbol)
-            ->whereDate('series_date', '>=', $startDate)
-            ->orderBy('series_date')
+        $series = BenchmarkPriceHistory::query()
+            ->where('symbol', $benchmarkSymbol)
+            ->whereDate('price_date', '>=', $startDate)
+            ->orderBy('price_date')
             ->get();
 
         if ($series->isEmpty()) {
             return [];
         }
 
-        $first = (float) $series->first()->close_price;
+        $mapped = $series->map(fn ($point) => [
+            'date' => $point->price_date->toDateString(),
+            'value' => round((float) $point->close_price, 2),
+        ]);
 
-        return $series->map(fn (BenchmarkSeries $point) => [
-            'date' => $point->series_date->toDateString(),
-            'value' => round((((float) $point->close_price) / max($first, 0.01)) * 100, 2),
-        ])->all();
+        return $this->normalizeSeries($this->alignSeries($portfolioPoints, $mapped));
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $points
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function applyRange(Collection $points, string $range): Collection
+    {
+        if ($points->isEmpty()) {
+            return collect();
+        }
+
+        $range = strtolower($range);
+
+        return match ($range) {
+            '1d' => $points->take(-2)->values(),
+            '5d' => $points->take(-5)->values(),
+            '3m' => $points->filter(fn (array $point) => Carbon::parse($point['date'])->gte(today()->subMonthsNoOverflow(3)))->values(),
+            '1y' => $points->filter(fn (array $point) => Carbon::parse($point['date'])->gte(today()->subYear()))->values(),
+            'ytd' => $points->filter(fn (array $point) => Carbon::parse($point['date'])->gte(today()->startOfYear()))->values(),
+            default => $points->filter(fn (array $point) => Carbon::parse($point['date'])->gte(today()->subMonth()))->values(),
+        };
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $points
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeSeries(Collection $points): array
+    {
+        if ($points->isEmpty()) {
+            return [];
+        }
+
+        $first = max((float) $points->first()['value'], 0.01);
+
+        return $points->map(fn (array $point) => [
+            'date' => $point['date'],
+            'value' => round((((float) $point['value']) / $first) * 100, 2),
+        ])->values()->all();
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $portfolioPoints
+     * @param  Collection<int, array<string, mixed>>  $benchmarkPoints
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function alignSeries(Collection $portfolioPoints, Collection $benchmarkPoints): Collection
+    {
+        $benchmarkByDate = $benchmarkPoints->keyBy('date');
+
+        return $portfolioPoints
+            ->filter(fn (array $point) => $benchmarkByDate->has($point['date']))
+            ->map(fn (array $point) => $benchmarkByDate->get($point['date']))
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $points
+     */
+    private function rangeReturn(Collection $points): float
+    {
+        if ($points->count() < 2) {
+            return 0.0;
+        }
+
+        $first = max((float) $points->first()['value'], 0.01);
+        $last = (float) $points->last()['value'];
+
+        return round((($last - $first) / $first) * 100, 2);
     }
 }

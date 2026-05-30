@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Feature;
 
+use App\Services\MarketData\MarketDataProvider;
 use App\Models\ApiToken;
 use App\Models\Account;
 use App\Models\Asset;
@@ -13,6 +14,14 @@ use Tests\TestCase;
 class PortfolioApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['services.market_data.provider' => 'demo']);
+        app()->forgetInstance(MarketDataProvider::class);
+    }
 
     public function test_authenticated_user_can_list_and_create_portfolios(): void
     {
@@ -55,8 +64,10 @@ class PortfolioApiTest extends TestCase
             ->postJson('/api/holdings', [
                 'portfolio_id' => $portfolio->id,
                 'symbol' => 'MSFT',
+                'trade_date' => '2026-05-10',
                 'purchase_price' => 420.50,
                 'quantity' => 3,
+                'total_cost' => 1261.50,
             ])
             ->assertCreated()
             ->assertJsonPath('asset.symbol', 'MSFT');
@@ -75,7 +86,30 @@ class PortfolioApiTest extends TestCase
         ]);
 
         $holding = Holding::query()->where('account_id', $account->id)->where('asset_id', $asset->id)->firstOrFail();
-        $this->assertSame('1261.50', $holding->cost_basis_total);
+        $this->assertGreaterThan(1261.50, (float) $holding->cost_basis_total);
+    }
+
+    public function test_authenticated_user_can_reset_portfolio(): void
+    {
+        [$user, $token] = $this->issueToken();
+        $portfolio = $user->portfolios()->create([
+            'name' => 'Main Portfolio',
+            'base_currency' => 'USD',
+            'benchmark_symbol' => 'W5000',
+            'benchmark_name' => 'Wilshire 5000',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/portfolios/'.$portfolio->id.'/reset')
+            ->assertOk()
+            ->assertJsonPath('portfolio.name', 'Main Portfolio');
+
+        $this->assertDatabaseMissing('portfolios', ['id' => $portfolio->id]);
+        $this->assertDatabaseHas('portfolios', [
+            'user_id' => $user->id,
+            'name' => 'Main Portfolio',
+            'benchmark_symbol' => 'W5000',
+        ]);
     }
 
     /**

@@ -31,4 +31,9 @@ class Asset extends Model
     {
         return $this->hasMany(PriceQuote::class);
     }
+
+    public function priceHistory(): HasMany
+    {
+        return $this->hasMany(AssetPriceHistory::class);
+    }
 }

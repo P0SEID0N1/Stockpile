@@ -4,9 +4,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h1 class="h3 mb-1">Accounts and holdings</h1>
-        <p class="text-secondary mb-0">Current snapshot positions grouped by account.</p>
+        <p class="text-secondary mb-0">Add backdated purchases and track the current position state derived from transactions.</p>
     </div>
-    <a href="{{ route('imports.index') }}" class="btn btn-dark">Import CSV snapshot</a>
+    <div class="d-flex gap-2">
+        <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addStockModal">Add stock</button>
+        <a href="{{ route('imports.index') }}" class="btn btn-outline-dark">Import CSV snapshot</a>
+    </div>
 </div>
 
 @foreach ($accounts as $account)
@@ -52,4 +55,50 @@
         </div>
     </div>
 @endforeach
+
+<div class="modal fade" id="addStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{{ route('portfolio.holdings.store') }}">
+                @csrf
+                <div class="modal-header">
+                    <h2 class="modal-title h5 mb-0">Add stock purchase</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Ticker</label>
+                            <input type="text" name="symbol" class="form-control" value="{{ old('symbol') }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Date purchased</label>
+                            <input type="date" name="trade_date" class="form-control" value="{{ old('trade_date', $defaultTradeDate) }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Purchase quantity</label>
+                            <input type="number" step="0.000001" min="0.000001" name="quantity" class="form-control" value="{{ old('quantity') }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Price paid</label>
+                            <input type="number" step="0.000001" min="0.000001" name="purchase_price" class="form-control" value="{{ old('purchase_price') }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Total cost</label>
+                            <input type="number" step="0.01" min="0.01" name="total_cost" class="form-control" value="{{ old('total_cost') }}" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea name="notes" class="form-control" rows="3">{{ old('notes') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark">Save purchase</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

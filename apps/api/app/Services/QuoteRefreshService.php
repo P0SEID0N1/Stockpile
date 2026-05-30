@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Asset;
-use App\Models\BenchmarkSeries;
 use App\Models\Holding;
 use App\Models\Portfolio;
 use App\Models\PriceQuote;
@@ -13,6 +12,7 @@ class QuoteRefreshService
 {
     public function __construct(
         private readonly MarketDataProvider $marketDataProvider,
+        private readonly MarketHistoryService $marketHistoryService,
     ) {
     }
 
@@ -59,32 +59,17 @@ class QuoteRefreshService
             $refreshed++;
         }
 
-        $benchmarksRefreshed = 0;
-        $portfolios = Portfolio::query()
+        $benchmarksRefreshed = Portfolio::query()
             ->when($portfolioId, fn ($query) => $query->whereKey($portfolioId))
-            ->get();
+            ->get()
+            ->reduce(function (int $count, Portfolio $portfolio) {
+                $this->marketHistoryService->syncBenchmarkHistory(
+                    $portfolio,
+                    now()->subDays(10)->startOfDay(),
+                );
 
-        foreach ($portfolios as $portfolio) {
-            $benchmarkQuote = $quotes[$portfolio->benchmark_symbol] ?? $this->marketDataProvider->fetchQuotes([$portfolio->benchmark_symbol])[$portfolio->benchmark_symbol] ?? null;
-            if (! $benchmarkQuote) {
-                continue;
-            }
-
-            BenchmarkSeries::query()->updateOrCreate(
-                [
-                    'symbol' => $portfolio->benchmark_symbol,
-                    'series_date' => today(),
-                ],
-                [
-                    'portfolio_id' => $portfolio->id,
-                    'label' => $portfolio->benchmark_name,
-                    'close_price' => $benchmarkQuote['price'],
-                    'source' => $benchmarkQuote['source'],
-                ],
-            );
-
-            $benchmarksRefreshed++;
-        }
+                return $count + 1;
+            }, 0);
 
         return [
             'quotes_refreshed' => $refreshed,

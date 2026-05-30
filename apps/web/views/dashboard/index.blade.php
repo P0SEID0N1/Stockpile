@@ -4,10 +4,10 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <h1 class="h3 mb-1">{{ $portfolio->name }}</h1>
-        <p class="text-secondary mb-0">Snapshot-based performance analytics for your self-hosted portfolio.</p>
+        <p class="text-secondary mb-0">Transaction-driven tracking with historical portfolio valuation.</p>
     </div>
     <div class="text-secondary small">
-        Benchmark: <strong>{{ $summary['benchmark_symbol'] }}</strong>
+        Benchmark: <strong>{{ $summary['benchmark_label'] }}</strong>
         @if ($summary['quote_timestamp'])
             <span class="d-block">Quotes updated {{ \Illuminate\Support\Carbon::parse($summary['quote_timestamp'])->diffForHumans() }}</span>
         @endif
@@ -49,9 +49,16 @@
     <div class="col-12 col-xl-8">
         <div class="card shadow-sm border-0 h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="h5 mb-0">Portfolio growth</h2>
-                    <a href="{{ route('performance.index') }}" class="btn btn-outline-dark btn-sm">Open performance</a>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                    <h2 class="h5 mb-0">Portfolio value</h2>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Range selector">
+                            @foreach (['1d', '5d', '1m', '3m', '1y', 'ytd'] as $range)
+                                <a href="{{ route('dashboard', ['range' => $range]) }}" class="btn {{ $selectedRange === $range ? 'btn-dark' : 'btn-outline-dark' }}">{{ strtoupper($range) }}</a>
+                            @endforeach
+                        </div>
+                        <a href="{{ route('performance.index', ['range' => $selectedRange]) }}" class="btn btn-outline-dark btn-sm">Open performance</a>
+                    </div>
                 </div>
                 <canvas id="growthChart" height="120"></canvas>
             </div>
@@ -119,7 +126,6 @@
 @push('scripts')
 <script>
 const dashboardSeries = @json($series['portfolio']);
-const benchmarkSeries = @json($series['benchmark']);
 new Chart(document.getElementById('growthChart'), {
     type: 'line',
     data: {
@@ -132,20 +138,13 @@ new Chart(document.getElementById('growthChart'), {
                 backgroundColor: 'rgba(13, 110, 253, 0.15)',
                 tension: 0.25,
                 fill: true
-            },
-            {
-                label: 'Benchmark (index 100)',
-                data: benchmarkSeries.map(point => point.value),
-                borderColor: '#198754',
-                tension: 0.25,
-                fill: false
             }
         ]
     },
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } }
+        plugins: { legend: { display: false } }
     }
 });
 </script>

@@ -37,8 +37,8 @@ class SetupController extends Controller
         $user->portfolios()->create([
             'name' => 'Main Portfolio',
             'base_currency' => 'USD',
-            'benchmark_symbol' => 'SPY',
-            'benchmark_name' => 'S&P 500 ETF',
+            'benchmark_symbol' => 'W5000',
+            'benchmark_name' => 'Wilshire 5000',
         ]);
 
         Auth::login($user);
