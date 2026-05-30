@@ -11,6 +11,7 @@ the Stockpile portfolio tracker.
 - Generic holdings CSV preview and commit flow
 - Bootstrap-based web dashboard rendered from `../web/views`
 - Queue-ready quote refresh job and scheduled quote refresh command
+- Tiingo-backed quote refresh support for current/latest market prices
 
 ## Local development
 
@@ -28,6 +29,18 @@ php artisan migrate
 ```bash
 php artisan serve
 ```
+
+To use live market data, set these in `.env`:
+
+```env
+MARKET_DATA_PROVIDER=tiingo
+TIINGO_API_TOKEN=your_tiingo_token
+TIINGO_BASE_URL=https://api.tiingo.com
+```
+
+The current implementation uses Tiingo's daily prices endpoint for latest
+quotes. Tiingo's separate IEX real-time feed can be added later if you need
+intraday exchange data.
 
 ## CSV import format
 

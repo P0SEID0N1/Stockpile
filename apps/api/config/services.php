@@ -44,4 +44,9 @@ return [
         'base_url' => env('ALPHAVANTAGE_BASE_URL', 'https://www.alphavantage.co'),
     ],
 
+    'tiingo' => [
+        'token' => env('TIINGO_API_TOKEN'),
+        'base_url' => env('TIINGO_BASE_URL', 'https://api.tiingo.com'),
+    ],
+
 ];

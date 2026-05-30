@@ -250,6 +250,7 @@ struct DashboardScreen: View {
 }
 
 struct HoldingsScreen: View {
+    @State private var isPresentingAddHolding = false
     let model: PortfolioAppModel
 
     var body: some View {
@@ -279,6 +280,100 @@ struct HoldingsScreen: View {
             .padding(.vertical, 4)
         }
         .navigationTitle("Portfolio")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isPresentingAddHolding = true
+                } label: {
+                    Label("Add Holding", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $isPresentingAddHolding) {
+            AddHoldingScreen(model: model)
+        }
+    }
+}
+
+struct AddHoldingScreen: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var model: PortfolioAppModel
+    @State private var symbol = ""
+    @State private var purchasePrice = ""
+    @State private var quantity = ""
+    @State private var isSaving = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Holding") {
+                    TextField("Ticker symbol", text: $symbol)
+                        #if !os(macOS)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        #endif
+                    TextField("Price paid per share", text: $purchasePrice)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                    TextField("Number of shares", text: $quantity)
+                        #if !os(macOS)
+                        .keyboardType(.decimalPad)
+                        #endif
+                }
+
+                Section("Quote source") {
+                    Text("Live quotes come from the configured backend market-data provider, not directly from `GOOGLEFINANCE()`.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let errorMessage = model.addHoldingErrorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Add Holding")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        Task {
+                            await save()
+                        }
+                    }
+                    .disabled(isSaving || symbol.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || purchasePrice.isEmpty || quantity.isEmpty)
+                }
+            }
+        }
+    }
+
+    private func save() async {
+        guard let parsedPurchasePrice = Double(purchasePrice),
+              let parsedQuantity = Double(quantity) else {
+            model.addHoldingErrorMessage = "Enter valid numeric values for price and shares."
+            return
+        }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        let success = await model.addHolding(
+            symbol: symbol,
+            purchasePrice: parsedPurchasePrice,
+            quantity: parsedQuantity
+        )
+
+        if success {
+            dismiss()
+        }
     }
 }
 

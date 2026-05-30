@@ -3,6 +3,9 @@
 namespace Tests\Feature\Feature;
 
 use App\Models\ApiToken;
+use App\Models\Account;
+use App\Models\Asset;
+use App\Models\Holding;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -36,6 +39,43 @@ class PortfolioApiTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('name', 'Retirement Portfolio');
+    }
+
+    public function test_authenticated_user_can_add_holding_with_symbol_price_and_quantity(): void
+    {
+        [$user, $token] = $this->issueToken();
+        $portfolio = $user->portfolios()->create([
+            'name' => 'Main Portfolio',
+            'base_currency' => 'USD',
+            'benchmark_symbol' => 'SPY',
+            'benchmark_name' => 'S&P 500 ETF',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/holdings', [
+                'portfolio_id' => $portfolio->id,
+                'symbol' => 'MSFT',
+                'purchase_price' => 420.50,
+                'quantity' => 3,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('asset.symbol', 'MSFT');
+
+        $this->assertDatabaseHas('accounts', [
+            'portfolio_id' => $portfolio->id,
+            'name' => 'Primary Brokerage',
+        ]);
+
+        $asset = Asset::query()->where('symbol', 'MSFT')->firstOrFail();
+        $account = Account::query()->where('portfolio_id', $portfolio->id)->firstOrFail();
+
+        $this->assertDatabaseHas('holdings', [
+            'account_id' => $account->id,
+            'asset_id' => $asset->id,
+        ]);
+
+        $holding = Holding::query()->where('account_id', $account->id)->where('asset_id', $asset->id)->firstOrFail();
+        $this->assertSame('1261.50', $holding->cost_basis_total);
     }
 
     /**

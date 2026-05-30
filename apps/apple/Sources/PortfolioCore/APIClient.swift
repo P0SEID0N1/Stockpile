@@ -55,6 +55,31 @@ public struct PortfolioAPIClient: Sendable {
         try await send(path: "api/plans/targets", queryItems: portfolioID.map { [URLQueryItem(name: "portfolio_id", value: String($0))] } ?? [])
     }
 
+    public func createHolding(
+        portfolioID: Int?,
+        symbol: String,
+        purchasePrice: Double,
+        quantity: Double
+    ) async throws -> HoldingRow {
+        var body: [String: String] = [
+            "symbol": symbol.uppercased(),
+            "name": symbol.uppercased(),
+            "asset_type": "stocks",
+            "quantity": String(quantity),
+            "purchase_price": String(purchasePrice),
+        ]
+
+        if let portfolioID {
+            body["portfolio_id"] = String(portfolioID)
+        }
+
+        return try await send(
+            path: "api/holdings",
+            method: "POST",
+            body: body
+        )
+    }
+
     private func send<Response: Decodable>(
         path: String,
         method: String = "GET",

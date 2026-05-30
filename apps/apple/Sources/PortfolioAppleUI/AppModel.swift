@@ -58,6 +58,7 @@ public final class PortfolioAppModel {
     public var isRefreshing = false
     public var isBootstrapped = false
     public var errorMessage: String?
+    public var addHoldingErrorMessage: String?
 
     private var authToken: String?
     private let userDefaults: UserDefaults
@@ -70,13 +71,17 @@ public final class PortfolioAppModel {
     }
 
     public init(userDefaults: UserDefaults = .standard) {
-        self.userDefaults = userDefaults
-        self.serverURL = userDefaults.string(forKey: StorageKey.serverURL) ?? "https://stockpile.maxwood.me"
-        self.authToken = userDefaults.string(forKey: StorageKey.authToken)
-        self.email = userDefaults.string(forKey: StorageKey.email) ?? ""
+        let storedServerURL = userDefaults.string(forKey: StorageKey.serverURL) ?? "https://stockpile.maxwood.me"
+        let storedAuthToken = userDefaults.string(forKey: StorageKey.authToken)
+        let storedEmail = userDefaults.string(forKey: StorageKey.email) ?? ""
         let storedPortfolioID = userDefaults.object(forKey: StorageKey.selectedPortfolioID) as? Int
+
+        self.userDefaults = userDefaults
+        self.serverURL = storedServerURL
+        self.authToken = storedAuthToken
+        self.email = storedEmail
         self.selectedPortfolioID = storedPortfolioID
-        self.authenticationState = self.authToken == nil ? .signedOut : .signedIn
+        self.authenticationState = storedAuthToken == nil ? .signedOut : .signedIn
     }
 
     public var isAuthenticated: Bool {
@@ -170,6 +175,38 @@ public final class PortfolioAppModel {
     public func selectPortfolio(id: Int) {
         selectedPortfolioID = id
         userDefaults.set(id, forKey: StorageKey.selectedPortfolioID)
+    }
+
+    public func addHolding(symbol: String, purchasePrice: Double, quantity: Double) async -> Bool {
+        guard isAuthenticated else {
+            addHoldingErrorMessage = "Sign in before adding holdings."
+            return false
+        }
+
+        guard symbol.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false else {
+            addHoldingErrorMessage = "Ticker symbol is required."
+            return false
+        }
+
+        guard purchasePrice > 0, quantity > 0 else {
+            addHoldingErrorMessage = "Purchase price and shares must be greater than zero."
+            return false
+        }
+
+        do {
+            _ = try await apiClient().createHolding(
+                portfolioID: selectedPortfolioID,
+                symbol: symbol,
+                purchasePrice: purchasePrice,
+                quantity: quantity
+            )
+            addHoldingErrorMessage = nil
+            await refresh()
+            return true
+        } catch {
+            addHoldingErrorMessage = error.localizedDescription
+            return false
+        }
     }
 
     public func saveServerURL() {

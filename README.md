@@ -28,6 +28,14 @@ php artisan serve
 
 Create the first user at `/setup`.
 
+For Tiingo-backed quotes, set this in `apps/api/.env`:
+
+```env
+MARKET_DATA_PROVIDER=tiingo
+TIINGO_API_TOKEN=your_tiingo_token
+TIINGO_BASE_URL=https://api.tiingo.com
+```
+
 ## Verification
 
 - Laravel tests: `cd apps/api && php artisan test`
