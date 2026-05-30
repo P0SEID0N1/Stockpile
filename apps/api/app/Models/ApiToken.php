@@ -20,13 +20,10 @@ class ApiToken extends Model
         'token_hash',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'last_used_at' => 'datetime',
-            'expires_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'last_used_at' => 'datetime',
+        'expires_at' => 'datetime',
+    ];
 
     public function user(): BelongsTo
     {

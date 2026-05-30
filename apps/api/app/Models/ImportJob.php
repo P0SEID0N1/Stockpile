@@ -19,14 +19,11 @@ class ImportJob extends Model
         'committed_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'preview_payload' => 'array',
-            'result_payload' => 'array',
-            'committed_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'preview_payload' => 'array',
+        'result_payload' => 'array',
+        'committed_at' => 'datetime',
+    ];
 
     public function user(): BelongsTo
     {

@@ -19,16 +19,13 @@ class Holding extends Model
         'notes',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'quantity' => 'decimal:6',
-            'cost_basis_total' => 'decimal:2',
-            'market_value' => 'decimal:2',
-            'price_as_of' => 'datetime',
-            'last_snapshot_at' => 'date',
-        ];
-    }
+    protected $casts = [
+        'quantity' => 'decimal:6',
+        'cost_basis_total' => 'decimal:2',
+        'market_value' => 'decimal:2',
+        'price_as_of' => 'datetime',
+        'last_snapshot_at' => 'date',
+    ];
 
     public function account(): BelongsTo
     {

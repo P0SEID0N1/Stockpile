@@ -16,12 +16,9 @@ class AllocationTarget extends Model
         'target_percentage',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'target_percentage' => 'decimal:4',
-        ];
-    }
+    protected $casts = [
+        'target_percentage' => 'decimal:4',
+    ];
 
     public function portfolio(): BelongsTo
     {

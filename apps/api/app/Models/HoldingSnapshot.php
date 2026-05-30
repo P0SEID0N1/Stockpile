@@ -19,16 +19,13 @@ class HoldingSnapshot extends Model
         'source_reference',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'snapshot_date' => 'date',
-            'quantity' => 'decimal:6',
-            'cost_basis_total' => 'decimal:2',
-            'market_value' => 'decimal:2',
-            'price_per_unit' => 'decimal:6',
-        ];
-    }
+    protected $casts = [
+        'snapshot_date' => 'date',
+        'quantity' => 'decimal:6',
+        'cost_basis_total' => 'decimal:2',
+        'market_value' => 'decimal:2',
+        'price_per_unit' => 'decimal:6',
+    ];
 
     public function holding(): BelongsTo
     {

@@ -18,12 +18,9 @@ class Asset extends Model
         'metadata',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'metadata' => 'array',
-        ];
-    }
+    protected $casts = [
+        'metadata' => 'array',
+    ];
 
     public function holdings(): HasMany
     {

@@ -19,15 +19,12 @@ class JournalEntry extends Model
         'notes',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'trade_date' => 'date',
-            'quantity' => 'decimal:6',
-            'price_per_unit' => 'decimal:6',
-            'amount' => 'decimal:2',
-        ];
-    }
+    protected $casts = [
+        'trade_date' => 'date',
+        'quantity' => 'decimal:6',
+        'price_per_unit' => 'decimal:6',
+        'amount' => 'decimal:2',
+    ];
 
     public function portfolio(): BelongsTo
     {

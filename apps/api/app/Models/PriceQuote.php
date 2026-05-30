@@ -18,16 +18,13 @@ class PriceQuote extends Model
         'day_change_percent',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'price' => 'decimal:6',
-            'price_date' => 'date',
-            'quoted_at' => 'datetime',
-            'day_change' => 'decimal:6',
-            'day_change_percent' => 'decimal:4',
-        ];
-    }
+    protected $casts = [
+        'price' => 'decimal:6',
+        'price_date' => 'date',
+        'quoted_at' => 'datetime',
+        'day_change' => 'decimal:6',
+        'day_change_percent' => 'decimal:4',
+    ];
 
     public function asset(): BelongsTo
     {

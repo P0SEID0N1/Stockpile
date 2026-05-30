@@ -16,13 +16,10 @@ class BenchmarkSeries extends Model
         'source',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'series_date' => 'date',
-            'close_price' => 'decimal:6',
-        ];
-    }
+    protected $casts = [
+        'series_date' => 'date',
+        'close_price' => 'decimal:6',
+    ];
 
     public function portfolio(): BelongsTo
     {
