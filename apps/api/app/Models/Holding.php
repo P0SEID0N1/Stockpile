@@ -73,4 +73,11 @@ class Holding extends Model
     {
         return round((float) $this->cost_basis_total - $this->manualNetInvestedTotal(), 2);
     }
+
+    public function currentPricePerShare(): float
+    {
+        $quantity = (float) $this->quantity;
+
+        return $quantity > 0 ? round((float) $this->market_value / $quantity, 6) : 0.0;
+    }
 }

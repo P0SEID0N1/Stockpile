@@ -36,8 +36,8 @@
                             <th>Name</th>
                             <th>Type</th>
                             <th>Quantity</th>
-                            <th>Net invested</th>
-                            <th>Market value</th>
+                            <th>Net cash invested</th>
+                            <th>Position value</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -46,14 +46,20 @@
                                 <td class="fw-semibold">{{ $holding->asset->symbol }}</td>
                                 <td>{{ $holding->asset->name }}</td>
                                 <td class="text-capitalize">{{ $holding->asset->asset_type }}</td>
-                                <td>{{ number_format((float) $holding->quantity, 4) }}</td>
+                                <td>
+                                    {{ number_format((float) $holding->quantity, 4) }}
+                                    <div class="text-secondary small">@ ${{ number_format($holding->currentPricePerShare(), 2) }}/share</div>
+                                </td>
                                 <td>
                                     ${{ number_format($holding->manualNetInvestedTotal(), 2) }}
                                     @if (abs($holding->dripBasisAdjustment()) >= 0.01)
                                         <div class="text-secondary small">Tax basis incl. DRIP: ${{ number_format((float) $holding->cost_basis_total, 2) }}</div>
                                     @endif
                                 </td>
-                                <td>${{ number_format((float) $holding->market_value, 2) }}</td>
+                                <td>
+                                    ${{ number_format((float) $holding->market_value, 2) }}
+                                    <div class="text-secondary small">{{ number_format((float) $holding->quantity, 4) }} × ${{ number_format($holding->currentPricePerShare(), 2) }}</div>
+                                </td>
                             </tr>
                         @empty
                             <tr>
