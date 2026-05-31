@@ -186,7 +186,7 @@ public final class PortfolioAppModel {
     public func addHolding(
         symbol: String,
         tradeDate: String,
-        purchasePrice: Double,
+        purchasePrice: Double?,
         quantity: Double,
         totalCost: Double
     ) async -> Bool {
@@ -200,8 +200,8 @@ public final class PortfolioAppModel {
             return false
         }
 
-        guard purchasePrice > 0, quantity > 0, totalCost > 0 else {
-            addHoldingErrorMessage = "Purchase date, price, shares, and total cost are required."
+        guard quantity > 0, totalCost > 0 else {
+            addHoldingErrorMessage = "Purchase date, shares, and total cost are required."
             return false
         }
 

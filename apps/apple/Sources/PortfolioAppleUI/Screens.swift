@@ -315,7 +315,7 @@ struct AddHoldingScreen: View {
                         .autocorrectionDisabled()
                         #endif
                     DatePicker("Purchase date", selection: $tradeDate, displayedComponents: .date)
-                    TextField("Price paid per share", text: $purchasePrice)
+                    TextField("Price paid per share (optional)", text: $purchasePrice)
                         #if !os(macOS)
                         .keyboardType(.decimalPad)
                         #endif
@@ -327,6 +327,9 @@ struct AddHoldingScreen: View {
                         #if !os(macOS)
                         .keyboardType(.decimalPad)
                         #endif
+                    Text("If total cost and share count are filled in, the app derives the per-share price automatically.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Quote source") {
@@ -356,17 +359,24 @@ struct AddHoldingScreen: View {
                             await save()
                         }
                     }
-                    .disabled(isSaving || symbol.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || purchasePrice.isEmpty || quantity.isEmpty || totalCost.isEmpty)
+                    .disabled(isSaving || symbol.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || quantity.isEmpty || totalCost.isEmpty)
                 }
             }
         }
     }
 
     private func save() async {
-        guard let parsedPurchasePrice = Double(purchasePrice),
-              let parsedQuantity = Double(quantity),
+        guard let parsedQuantity = Double(quantity),
               let parsedTotalCost = Double(totalCost) else {
-            model.addHoldingErrorMessage = "Enter valid numeric values for price, shares, and total cost."
+            model.addHoldingErrorMessage = "Enter valid numeric values for shares and total cost."
+            return
+        }
+
+        let trimmedPurchasePrice = purchasePrice.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parsedPurchasePrice = trimmedPurchasePrice.isEmpty ? nil : Double(trimmedPurchasePrice)
+
+        if !trimmedPurchasePrice.isEmpty && parsedPurchasePrice == nil {
+            model.addHoldingErrorMessage = "Enter a valid numeric value for price paid per share."
             return
         }
 

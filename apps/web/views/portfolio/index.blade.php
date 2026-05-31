@@ -97,8 +97,9 @@
                             <input type="number" step="0.000001" min="0.000001" name="quantity" class="form-control" value="{{ old('quantity') }}" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Price paid</label>
-                            <input type="number" step="0.000001" min="0.000001" name="purchase_price" class="form-control" value="{{ old('purchase_price') }}" required>
+                            <label class="form-label">Price paid per share</label>
+                            <input type="number" step="0.000001" min="0.000001" name="purchase_price" class="form-control" value="{{ old('purchase_price') }}">
+                            <div class="form-text">Optional. If you fill in quantity and total cost, this will be derived automatically.</div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Total cost</label>

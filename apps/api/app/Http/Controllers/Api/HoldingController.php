@@ -46,18 +46,21 @@ class HoldingController extends Controller
             'currency' => ['nullable', 'string', 'size:3'],
             'trade_date' => ['nullable', 'date'],
             'quantity' => ['required', 'numeric'],
-            'purchase_price' => ['required', 'numeric', 'min:0'],
-            'total_cost' => ['nullable', 'numeric', 'min:0'],
+            'purchase_price' => ['nullable', 'numeric', 'gt:0', 'required_without:total_cost'],
+            'total_cost' => ['nullable', 'numeric', 'gt:0', 'required_without:purchase_price'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        $expectedTotal = round((float) $validated['purchase_price'] * (float) $validated['quantity'], 2);
-        $totalCost = isset($validated['total_cost']) ? (float) $validated['total_cost'] : $expectedTotal;
-        abort_if(abs($expectedTotal - $totalCost) > 0.02, 422, 'Total cost must match price multiplied by quantity.');
+        $quantity = (float) $validated['quantity'];
+        $purchasePrice = isset($validated['purchase_price']) ? (float) $validated['purchase_price'] : null;
+        $totalCost = isset($validated['total_cost'])
+            ? round((float) $validated['total_cost'], 2)
+            : round(((float) $purchasePrice) * $quantity, 2);
 
         $entry = $portfolioLedgerService->recordBuy($portfolio, [
             ...$validated,
             'trade_date' => $validated['trade_date'] ?? today()->toDateString(),
+            'purchase_price' => $purchasePrice ?? round($totalCost / max($quantity, 0.000001), 6),
             'total_cost' => $totalCost,
             'origin' => 'api-holdings',
         ]);

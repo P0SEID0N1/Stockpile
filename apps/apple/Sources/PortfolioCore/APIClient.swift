@@ -64,7 +64,7 @@ public struct PortfolioAPIClient: Sendable {
         portfolioID: Int?,
         symbol: String,
         tradeDate: String,
-        purchasePrice: Double,
+        purchasePrice: Double?,
         quantity: Double,
         totalCost: Double
     ) async throws -> HoldingRow {
@@ -74,9 +74,12 @@ public struct PortfolioAPIClient: Sendable {
             "asset_type": "stocks",
             "trade_date": tradeDate,
             "quantity": String(quantity),
-            "purchase_price": String(purchasePrice),
             "total_cost": String(totalCost),
         ]
+
+        if let purchasePrice {
+            body["purchase_price"] = String(purchasePrice)
+        }
 
         if let portfolioID {
             body["portfolio_id"] = String(portfolioID)

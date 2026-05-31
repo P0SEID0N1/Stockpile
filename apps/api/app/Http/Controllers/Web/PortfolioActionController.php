@@ -25,21 +25,20 @@ class PortfolioActionController extends Controller
             'currency' => ['nullable', 'string', 'size:3'],
             'trade_date' => ['required', 'date'],
             'quantity' => ['required', 'numeric', 'gt:0'],
-            'purchase_price' => ['required', 'numeric', 'gt:0'],
-            'total_cost' => ['required', 'numeric', 'gt:0'],
+            'purchase_price' => ['nullable', 'numeric', 'gt:0', 'required_without:total_cost'],
+            'total_cost' => ['nullable', 'numeric', 'gt:0', 'required_without:purchase_price'],
             'notes' => ['nullable', 'string'],
         ]);
-
-        $expectedTotal = round((float) $validated['purchase_price'] * (float) $validated['quantity'], 2);
-
-        if (abs($expectedTotal - (float) $validated['total_cost']) > 0.02) {
-            return back()
-                ->withErrors(['total_cost' => 'Total cost must match price multiplied by quantity.'])
-                ->withInput();
-        }
+        $quantity = (float) $validated['quantity'];
+        $purchasePrice = isset($validated['purchase_price']) ? (float) $validated['purchase_price'] : null;
+        $totalCost = isset($validated['total_cost'])
+            ? round((float) $validated['total_cost'], 2)
+            : round(((float) $purchasePrice) * $quantity, 2);
 
         $portfolioLedgerService->recordBuy($portfolio, [
             ...$validated,
+            'purchase_price' => $purchasePrice ?? round($totalCost / $quantity, 6),
+            'total_cost' => $totalCost,
             'origin' => 'web-portfolio',
         ]);
 

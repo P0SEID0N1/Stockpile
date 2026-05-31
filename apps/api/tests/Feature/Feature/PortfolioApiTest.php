@@ -89,6 +89,34 @@ class PortfolioApiTest extends TestCase
         $this->assertGreaterThan(1261.50, (float) $holding->cost_basis_total);
     }
 
+    public function test_authenticated_user_can_add_holding_with_quantity_and_total_cost_only(): void
+    {
+        [$user, $token] = $this->issueToken();
+        $portfolio = $user->portfolios()->create([
+            'name' => 'Main Portfolio',
+            'base_currency' => 'USD',
+            'benchmark_symbol' => 'SPY',
+            'benchmark_name' => 'S&P 500 ETF',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/holdings', [
+                'portfolio_id' => $portfolio->id,
+                'symbol' => 'AAPL',
+                'trade_date' => '2026-05-10',
+                'quantity' => 4.2,
+                'total_cost' => 275.81,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('asset.symbol', 'AAPL');
+
+        $asset = Asset::query()->where('symbol', 'AAPL')->firstOrFail();
+        $account = Account::query()->where('portfolio_id', $portfolio->id)->firstOrFail();
+        $holding = Holding::query()->where('account_id', $account->id)->where('asset_id', $asset->id)->firstOrFail();
+
+        $this->assertGreaterThanOrEqual(275.81, (float) $holding->cost_basis_total);
+    }
+
     public function test_authenticated_user_can_reset_portfolio(): void
     {
         [$user, $token] = $this->issueToken();
