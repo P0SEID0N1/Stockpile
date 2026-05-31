@@ -83,6 +83,12 @@ class Holding extends Model
 
     public function trailingDividendYieldPercent(): ?float
     {
+        $metadata = is_array($this->asset->metadata) ? $this->asset->metadata : [];
+
+        if (isset($metadata['dividend_yield_percent']) && is_numeric($metadata['dividend_yield_percent'])) {
+            return round((float) $metadata['dividend_yield_percent'], 2);
+        }
+
         $currentPrice = $this->currentPricePerShare();
         $cutoffDate = now()->subYear()->startOfDay();
 

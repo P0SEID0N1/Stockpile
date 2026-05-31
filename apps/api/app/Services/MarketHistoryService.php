@@ -14,6 +14,7 @@ class MarketHistoryService
 {
     public function __construct(
         private readonly MarketDataProvider $marketDataProvider,
+        private readonly StockAnalysisDividendService $stockAnalysisDividendService,
     ) {
     }
 
@@ -49,6 +50,8 @@ class MarketHistoryService
                 ['open_price', 'high_price', 'low_price', 'close_price', 'adj_close_price', 'dividend_cash', 'split_factor', 'source', 'updated_at']
             );
         }
+
+        $this->stockAnalysisDividendService->syncDividendSnapshot($asset, $startDate);
 
         return $asset->priceHistory()
             ->whereDate('price_date', '>=', $startDate->toDateString())
