@@ -84,6 +84,7 @@ class Holding extends Model
     public function trailingDividendYieldPercent(): ?float
     {
         $currentPrice = $this->currentPricePerShare();
+        $cutoffDate = now()->subYear()->startOfDay();
 
         if ($currentPrice <= 0) {
             return null;
@@ -92,11 +93,11 @@ class Holding extends Model
         $history = $this->asset->relationLoaded('priceHistory')
             ? $this->asset->priceHistory
             : $this->asset->priceHistory()
-                ->whereDate('price_date', '>=', now()->subYear()->toDateString())
+                ->whereDate('price_date', '>=', $cutoffDate->toDateString())
                 ->get();
 
         $annualDividendPerShare = round((float) $history
-            ->where('price_date', '>=', now()->subYear())
+            ->filter(fn (AssetPriceHistory $row) => $row->price_date && $row->price_date->gte($cutoffDate))
             ->sum(fn (AssetPriceHistory $row) => (float) ($row->dividend_cash ?? 0)), 6);
 
         if ($annualDividendPerShare <= 0) {

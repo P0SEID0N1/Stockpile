@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Concerns\InteractsWithPortfolio;
 use App\Http\Controllers\Controller;
 use App\Models\Holding;
+use App\Services\MarketHistoryService;
 use App\Services\PortfolioAnalyticsService;
 use Illuminate\Http\Request;
 
@@ -14,6 +15,7 @@ class DashboardController extends Controller
 
     public function __construct(
         private readonly PortfolioAnalyticsService $portfolioAnalyticsService,
+        private readonly MarketHistoryService $marketHistoryService,
     ) {
     }
 
@@ -39,6 +41,17 @@ class DashboardController extends Controller
     public function portfolio(Request $request)
     {
         $portfolio = $this->resolvePortfolio($request);
+        $historyStartDate = now()->subYear()->startOfDay();
+
+        $portfolio->accounts()
+            ->with('holdings.asset')
+            ->get()
+            ->pluck('holdings')
+            ->flatten()
+            ->pluck('asset')
+            ->filter()
+            ->unique('id')
+            ->each(fn ($asset) => $this->marketHistoryService->syncAssetHistory($asset, $historyStartDate));
 
         return view('portfolio.index', [
             'portfolio' => $portfolio,
@@ -46,7 +59,7 @@ class DashboardController extends Controller
             'accounts' => $portfolio->accounts()->with([
                 'holdings.journalEntries',
                 'holdings.asset.priceHistory' => fn ($query) => $query
-                    ->whereDate('price_date', '>=', now()->subYear()->toDateString())
+                    ->whereDate('price_date', '>=', $historyStartDate->toDateString())
                     ->orderBy('price_date'),
             ])->get(),
             'defaultTradeDate' => today()->toDateString(),
