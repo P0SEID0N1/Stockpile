@@ -12,6 +12,12 @@
     </div>
 </div>
 
+@if (($summary['quote_source'] ?? null) === 'demo')
+    <div class="alert alert-warning border-0 shadow-sm" role="alert">
+        Market values are currently using demo quotes, not Tiingo live data. Update <code>MARKET_DATA_PROVIDER=tiingo</code>, set <code>TIINGO_API_TOKEN</code>, then run <code>php artisan optimize:clear</code>, <code>php artisan config:cache</code>, and <code>php artisan portfolio:refresh-quotes</code> on the server.
+    </div>
+@endif
+
 @foreach ($accounts as $account)
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
@@ -30,7 +36,7 @@
                             <th>Name</th>
                             <th>Type</th>
                             <th>Quantity</th>
-                            <th>Cost basis</th>
+                            <th>Net invested</th>
                             <th>Market value</th>
                         </tr>
                     </thead>
@@ -41,7 +47,12 @@
                                 <td>{{ $holding->asset->name }}</td>
                                 <td class="text-capitalize">{{ $holding->asset->asset_type }}</td>
                                 <td>{{ number_format((float) $holding->quantity, 4) }}</td>
-                                <td>${{ number_format((float) $holding->cost_basis_total, 2) }}</td>
+                                <td>
+                                    ${{ number_format($holding->manualNetInvestedTotal(), 2) }}
+                                    @if (abs($holding->dripBasisAdjustment()) >= 0.01)
+                                        <div class="text-secondary small">Tax basis incl. DRIP: ${{ number_format((float) $holding->cost_basis_total, 2) }}</div>
+                                    @endif
+                                </td>
                                 <td>${{ number_format((float) $holding->market_value, 2) }}</td>
                             </tr>
                         @empty

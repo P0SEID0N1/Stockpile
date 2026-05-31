@@ -18,6 +18,11 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(MarketDataProvider::class, function () {
             $provider = config('services.market_data.provider', 'demo');
+            $tiingoToken = (string) config('services.tiingo.token', '');
+
+            if ($provider === 'demo' && $tiingoToken !== '') {
+                $provider = 'tiingo';
+            }
 
             return match ($provider) {
                 'alphavantage' => new AlphaVantageMarketDataProvider(

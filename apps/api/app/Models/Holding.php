@@ -53,4 +53,24 @@ class Holding extends Model
 
         return $quantity > 0 ? round((float) $this->cost_basis_total / $quantity, 6) : 0.0;
     }
+
+    public function manualNetInvestedTotal(): float
+    {
+        $entries = $this->relationLoaded('journalEntries')
+            ? $this->journalEntries->where('source_type', 'manual')
+            : $this->journalEntries()->where('source_type', 'manual')->get();
+
+        return round($entries->reduce(function (float $carry, JournalEntry $entry) {
+            return $carry + match ($entry->entry_type) {
+                'buy' => (float) ($entry->amount ?? 0),
+                'sell' => -1 * (float) ($entry->amount ?? 0),
+                default => 0.0,
+            };
+        }, 0.0), 2);
+    }
+
+    public function dripBasisAdjustment(): float
+    {
+        return round((float) $this->cost_basis_total - $this->manualNetInvestedTotal(), 2);
+    }
 }

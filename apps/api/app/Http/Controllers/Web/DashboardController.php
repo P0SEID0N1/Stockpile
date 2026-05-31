@@ -42,7 +42,8 @@ class DashboardController extends Controller
 
         return view('portfolio.index', [
             'portfolio' => $portfolio,
-            'accounts' => $portfolio->accounts()->with('holdings.asset')->get(),
+            'summary' => $this->portfolioAnalyticsService->summary($portfolio),
+            'accounts' => $portfolio->accounts()->with(['holdings.asset', 'holdings.journalEntries'])->get(),
             'defaultTradeDate' => today()->toDateString(),
         ]);
     }

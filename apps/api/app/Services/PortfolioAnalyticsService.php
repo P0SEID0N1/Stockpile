@@ -61,6 +61,7 @@ class PortfolioAnalyticsService
             'asset_type_allocation' => $this->percentBreakdown($valueByAssetType, $currentValue),
             'account_allocation' => $this->percentBreakdown($valueByAccount, $currentValue),
             'quote_timestamp' => $quotes->sortByDesc('quoted_at')->first()?->quoted_at?->toIso8601String(),
+            'quote_source' => $quotes->sortByDesc('quoted_at')->first()?->source ?: config('services.market_data.provider', 'demo'),
         ];
     }
 

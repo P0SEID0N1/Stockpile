@@ -3,6 +3,7 @@
 namespace Tests\Feature\Unit;
 
 use App\Models\ApiToken;
+use App\Models\Holding;
 use App\Models\JournalEntry;
 use App\Models\User;
 use App\Services\MarketData\MarketDataProvider;
@@ -61,6 +62,11 @@ class PortfolioLedgerServiceTest extends TestCase
                 ->whereDate('trade_date', '2026-05-15')
                 ->exists()
         );
+
+        $holding = Holding::query()->firstOrFail()->load('journalEntries');
+        $this->assertSame(1000.0, $holding->manualNetInvestedTotal());
+        $this->assertGreaterThan(1000.0, (float) $holding->cost_basis_total);
+        $this->assertGreaterThan(0.0, $holding->dripBasisAdjustment());
     }
 
     public function test_timeseries_supports_range_metadata(): void
