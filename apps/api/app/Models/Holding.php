@@ -80,4 +80,29 @@ class Holding extends Model
 
         return $quantity > 0 ? round((float) $this->market_value / $quantity, 6) : 0.0;
     }
+
+    public function trailingDividendYieldPercent(): ?float
+    {
+        $currentPrice = $this->currentPricePerShare();
+
+        if ($currentPrice <= 0) {
+            return null;
+        }
+
+        $history = $this->asset->relationLoaded('priceHistory')
+            ? $this->asset->priceHistory
+            : $this->asset->priceHistory()
+                ->whereDate('price_date', '>=', now()->subYear()->toDateString())
+                ->get();
+
+        $annualDividendPerShare = round((float) $history
+            ->where('price_date', '>=', now()->subYear())
+            ->sum(fn (AssetPriceHistory $row) => (float) ($row->dividend_cash ?? 0)), 6);
+
+        if ($annualDividendPerShare <= 0) {
+            return null;
+        }
+
+        return round(($annualDividendPerShare / $currentPrice) * 100, 2);
+    }
 }

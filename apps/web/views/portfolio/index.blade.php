@@ -35,6 +35,7 @@
                             <th>Symbol</th>
                             <th>Name</th>
                             <th>Type</th>
+                            <th>Dividend yield</th>
                             <th>Quantity</th>
                             <th>Net cash invested</th>
                             <th>Position value</th>
@@ -46,6 +47,14 @@
                                 <td class="fw-semibold">{{ $holding->asset->symbol }}</td>
                                 <td>{{ $holding->asset->name }}</td>
                                 <td class="text-capitalize">{{ $holding->asset->asset_type }}</td>
+                                <td>
+                                    @if (($yield = $holding->trailingDividendYieldPercent()) !== null)
+                                        {{ number_format($yield, 2) }}%
+                                        <div class="text-secondary small">Trailing 12m</div>
+                                    @else
+                                        <span class="text-secondary">—</span>
+                                    @endif
+                                </td>
                                 <td>
                                     {{ number_format((float) $holding->quantity, 4) }}
                                     <div class="text-secondary small">@ ${{ number_format($holding->currentPricePerShare(), 2) }}/share</div>
@@ -63,7 +72,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-secondary">No holdings imported yet.</td>
+                                <td colspan="7" class="text-secondary">No holdings imported yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

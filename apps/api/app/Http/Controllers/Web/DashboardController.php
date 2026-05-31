@@ -43,7 +43,12 @@ class DashboardController extends Controller
         return view('portfolio.index', [
             'portfolio' => $portfolio,
             'summary' => $this->portfolioAnalyticsService->summary($portfolio),
-            'accounts' => $portfolio->accounts()->with(['holdings.asset', 'holdings.journalEntries'])->get(),
+            'accounts' => $portfolio->accounts()->with([
+                'holdings.journalEntries',
+                'holdings.asset.priceHistory' => fn ($query) => $query
+                    ->whereDate('price_date', '>=', now()->subYear()->toDateString())
+                    ->orderBy('price_date'),
+            ])->get(),
             'defaultTradeDate' => today()->toDateString(),
         ]);
     }

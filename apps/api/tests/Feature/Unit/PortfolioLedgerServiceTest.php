@@ -67,6 +67,7 @@ class PortfolioLedgerServiceTest extends TestCase
         $this->assertSame(1000.0, $holding->manualNetInvestedTotal());
         $this->assertGreaterThan(1000.0, (float) $holding->cost_basis_total);
         $this->assertGreaterThan(0.0, $holding->dripBasisAdjustment());
+        $this->assertNotNull($holding->load('asset.priceHistory')->trailingDividendYieldPercent());
     }
 
     public function test_timeseries_supports_range_metadata(): void
