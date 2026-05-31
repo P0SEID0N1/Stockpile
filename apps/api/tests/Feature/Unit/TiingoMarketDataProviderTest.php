@@ -34,6 +34,7 @@ class TiingoMarketDataProviderTest extends TestCase
         $this->assertSame('2026-05-29', $quotes['AAPL']['price_date']);
         $this->assertSame(3.35, $quotes['AAPL']['day_change']);
         $this->assertSame(1.6911, $quotes['AAPL']['day_change_percent']);
+        $this->assertSame(now()->toDateString(), $quotes['AAPL']['quoted_at']->toDateString());
     }
 
     public function test_it_falls_back_to_single_symbol_prices_when_bulk_response_misses_a_symbol(): void

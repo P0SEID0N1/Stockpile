@@ -171,7 +171,8 @@ class TiingoMarketDataProvider implements MarketDataProvider
             return null;
         }
 
-        $quotedAt = isset($payload['date']) ? Carbon::parse((string) $payload['date']) : now();
+        $priceDate = isset($payload['date']) ? Carbon::parse((string) $payload['date']) : now();
+        $quotedAt = now();
         $previousClose = $payload['prevClose'] ?? $payload['previousClose'] ?? null;
         $dayChange = is_numeric($previousClose) ? round((float) $price - (float) $previousClose, 6) : null;
         $dayChangePercent = is_numeric($previousClose) && (float) $previousClose !== 0.0
@@ -182,7 +183,7 @@ class TiingoMarketDataProvider implements MarketDataProvider
             'symbol' => $symbol,
             'price' => round((float) $price, 6),
             'quoted_at' => $quotedAt,
-            'price_date' => $quotedAt->toDateString(),
+            'price_date' => $priceDate->toDateString(),
             'currency' => 'USD',
             'source' => 'tiingo',
             'day_change' => $dayChange,
